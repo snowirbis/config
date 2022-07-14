@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strconv"
 	"strings"
 )
 
 var (
-	ENONE    = errors.New("Requested value does not exist")
-	EBADTYPE = errors.New("Requested type and actual type do not match")
-	EBADVAL  = errors.New("Value and type do not match")
+	ENONE    = errors.New("Config error: requested value does not exist")
+	EBADTYPE = errors.New("Config error: requested type and actual type do not match")
+	EBADVAL  = errors.New("Config error: value and type do not match")
 )
 
 type varError struct {
@@ -28,9 +29,11 @@ func (err *varError) Error() string {
 type VarType int
 
 const (
-	Bool VarType = 1 + iota
+	VERSION         = "1.0.1"
+	Bool    VarType = 1 + iota
 	Array
 	String
+	Integer
 )
 
 func (t VarType) String() string {
@@ -40,6 +43,8 @@ func (t VarType) String() string {
 	case Array:
 		return "Array"
 	case String:
+		return "String"
+	case Integer:
 		return "String"
 	}
 
@@ -70,9 +75,9 @@ func Parse(r io.Reader) (c *Config, err error) {
 		line = bytes.TrimSpace(line)
 		newline := string(line)
 		newline = strings.Replace(newline, "\t", " ", -1)
-		
+
 		line = []byte(newline)
-		
+
 		if len(line) == 0 {
 			continue
 		}
@@ -162,4 +167,20 @@ func (c *Config) String(name string) (string, error) {
 	}
 
 	return v, nil
+}
+
+func (c *Config) Integer(name string) (int, error) {
+	name = strings.ToLower(name)
+
+	val, ok := c.m[name]
+	if !ok {
+		return 0, &varError{ENONE, name, String}
+	}
+
+	int1, err := strconv.ParseInt(val.Val.(string), 6, 12)
+	if err != nil {
+		return 0, &varError{EBADTYPE, name, String}
+	}
+
+	return int(int1), nil
 }
